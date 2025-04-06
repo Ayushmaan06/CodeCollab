@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import ControlBarButton from "./controlBarButton";
 import { useSelector } from "react-redux";
+import AIChatModal from "./AIChatModal";
 
 const ControlBar = ({
   isCameraOn, toggleCamera,
@@ -15,6 +16,11 @@ const ControlBar = ({
   leaveRoom,
 }) => {
   const darkMode = useSelector((state) => state.theme.darkMode);
+  const [showAIModal, setShowAIModal] = useState(false);
+
+  const handleAIClick = () => {
+    setShowAIModal(true);
+  };
 
   return (
     <div
@@ -78,7 +84,7 @@ const ControlBar = ({
         </ControlBarButton>
 
         <ControlBarButton
-          onClick={() => {}}
+          onClick={handleAIClick} 
           active={false}
           inactiveColor={{
             dark: "bg-[#2B7DBD]/10 hover:bg-[#2B7DBD]/20 text-purple-300",
@@ -121,6 +127,11 @@ const ControlBar = ({
           <LogOut size={22} />
         </ControlBarButton>
       </div>
+
+      {/* Conditionally render the AI Chat Modal */}
+      {showAIModal && (
+        <AIChatModal onClose={() => setShowAIModal(false)} />
+      )}
     </div>
   );
 };
