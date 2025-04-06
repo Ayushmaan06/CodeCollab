@@ -4,8 +4,13 @@ import { Server } from 'socket.io';
 import connectDB from './db/index.js';
 import { app } from './app.js';
 import { initSocketServer } from './socket/index.js'; // << new import
+import express from 'express';
+import geminiRoute from './routes/gemini.js';
 
 dotenv.config({ path: "./.env" });
+
+app.use(express.json());
+app.use('/api/gemini', geminiRoute);
 
 connectDB()
   .then(() => {
