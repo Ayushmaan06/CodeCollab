@@ -10,7 +10,7 @@ const Home = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const res = await axios.get('http://localhost:3000/api/v1/projects', {
+        const res = await axios.get('/projects', {
           withCredentials: true,
         });
         console.log('API response:', res.data);

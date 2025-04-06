@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import io from "socket.io-client";
 import {
   TopBar,
   ControlBar,
@@ -31,6 +32,7 @@ const Room = () => {
   const [sidebarContent, setSidebarContent] = useState(null);
 
   const editorRef = useRef();
+  const socketRef = useRef();
 
   const toggleCamera = () => setIsCameraOn((prev) => !prev);
   const toggleMic = () => setIsMicOn((prev) => !prev);
@@ -67,11 +69,10 @@ const Room = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Check room access
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        const isAllowed = true; // TODO: Replace with real access logic
+        const isAllowed = true; // Replace with your real auth logic
         if (!isAllowed) setAccessDenied(true);
       } catch (err) {
         setAccessDenied(true);
@@ -81,7 +82,6 @@ const Room = () => {
     checkAccess();
   }, [roomId]);
 
-  // Escape key listener for fullscreen exit
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && isFullscreen) {
@@ -126,20 +126,48 @@ const Room = () => {
     }
   }, [hostLeft, leaveTimer]);
 
+  // === SOCKET.IO SETUP ===
+  useEffect(() => {
+    if (!roomId) return;
+
+    socketRef.current = io(import.meta.env.VITE_BACKEND_API_URL); // Replace with deployed backend if needed
+
+    // Join the room
+    socketRef.current.emit("join-room", {
+      roomId,
+      user: { fullname: "Guest" }, // Add real user data if needed
+    });
+
+    // Listen for code updates
+    socketRef.current.on("code-update", ({ code }) => {
+      // console.log("📤 Received code update:", code);  // Add this
+      if (editorRef.current?.getCode() !== code) {
+        editorRef.current.setCode(code);
+      }
+    });
+
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, [roomId]);
+
   const roomLink = `${window.location.origin}/room/${roomId}`;
 
   if (accessDenied) return <AccessDenied />;
 
   return (
     <div className={`min-h-screen flex flex-col ${isDarkMode ? "bg-[#3C4F67FF]" : "bg-gray-100"}`}>
-      <TopBar roomId={roomId} onCopyCode={() => {
-        const code = editorRef.current?.getCode();
-        if (code) {
-          navigator.clipboard.writeText(code);
-          setIsCopied(true);
-          setTimeout(() => setIsCopied(false), 2000);
-        }
-      }} />
+      <TopBar
+        roomId={roomId}
+        onCopyCode={() => {
+          const code = editorRef.current?.getCode();
+          if (code) {
+            navigator.clipboard.writeText(code);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+          }
+        }}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <ControlBar
@@ -156,13 +184,19 @@ const Room = () => {
           showSidebar={showSidebar}
         />
 
-        {/* Main Content Area */}
         <div className="flex-1 flex">
           <div className="flex-1 p-2">
-            <CodeEditor ref={editorRef} />
+            <CodeEditor
+              ref={editorRef}
+              onCodeChange={(newCode) => {
+                // console.log("Typing & emitting code:", newCode); // <--- DEBUG LOG
+                if (socketRef.current) {
+                  socketRef.current.emit("code-change", { roomId, code: newCode });
+                }
+              }}
+            />
           </div>
 
-          {/* Participants Sidebar */}
           {showSidebar && sidebarContent === "participants" && (
             <ParticipantsSidebar
               projectId={roomId}
@@ -173,7 +207,6 @@ const Room = () => {
         </div>
       </div>
 
-      {/* Share Link Popup */}
       <ShareLinkPopup
         show={showSharePopup}
         roomLink={roomLink}
@@ -183,14 +216,12 @@ const Room = () => {
         darkMode={isDarkMode}
       />
 
-      {/* ESC Notification */}
       <EscNotification
         show={showEscNotification && isFullscreen}
         darkMode={isDarkMode}
         onClose={() => setShowEscNotification(false)}
       />
 
-      {/* Leave Room Modal */}
       {hostLeft && (
         <LeaveRoomModal
           onDownload={handleCodeDownload}
@@ -200,7 +231,6 @@ const Room = () => {
         />
       )}
 
-      {/* TEMP button to simulate host leaving */}
       <button
         onClick={() => {
           setHostLeft(true);

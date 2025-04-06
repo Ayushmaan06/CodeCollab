@@ -20,8 +20,11 @@ export const initSocketServer = (io) => {
       });
   
       socket.on("code-change", ({ roomId, code }) => {
-        socket.to(roomId).emit("code-update", { code });
+        console.log(`✏️ code-change from ${socket.id} in room ${roomId}: ${code.slice(0, 30)}...`);
+        io.to(roomId).emit("code-update", { code }); // sends to everyone, including sender
+
       });
+      
   
       socket.on("disconnect", () => {
         console.log("🔴 Client disconnected:", socket.id);
